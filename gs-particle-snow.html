@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Greensock Snow Flake Experiment</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <style>
+        body{
+            background-color: #eee;
+            margin: 0;
+        }
+
+        .container{
+            position: relative;
+            width: 1000px;
+            margin: 0 auto;
+        }
+        
+        #container{
+            background-color: black;
+            height: 600px;
+        }
+
+        #player-control{
+            background-color: #333;
+            color: white;
+            height: 60px;
+        }
+    </style>
+    <script src="http://code.jquery.com/jquery-1.11.2.min.js"></script>
+    <script src="http://code.jquery.com/jquery-migrate-1.2.1.min.js"></script>
+</head>
+
+<body class="container">
+<div id="container">
+</div>
+
+<div id="player-control">
+    <button type="button" id="play-pause">PLAY</button>
+</div>
+
+<script src="http://cdnjs.cloudflare.com/ajax/libs/gsap/latest/TweenMax.min.js"></script>
+<script>
+    var max_particles=200;
+    var snow_timeline = new TimelineMax({paused:true, repeat:-1});
+    var explosion_timeline = new TimelineLite({paused:true});
+
+    //createSnowFlakes();
+    //snow_timeline.play();
+
+    createExplosion();
+    explosion_timeline.play();
+
+    function randRange(low, high){
+        var range = high - low;
+        return low + Math.random()*range;
+    }
+
+    function createSnowFlakes(){
+        var i=max_particles;
+
+        while(i>0){
+            var px = randRange(20, $("#container").width()),
+                py = -20,
+                speed = randRange( 10, 20),
+                start_time = randRange( 0, 20),
+                img_scale = randRange(10, 20);
+            var sf_img = $("<img src='images/snowflake.png' id='snowflake'"+i+"'/>");
+            sf_img.css({ "position":"absolute", "left": px, "top": py, "width": img_scale, "height":"auto"});
+            $("#container").append(sf_img);
+
+            var sf_timeline = new TimelineMax({repeat:-1});
+            sf_timeline.to(sf_img, speed, {"top": $("#container").height(), ease:Quad.easeOut});
+            sf_timeline.to(sf_img, speed*0.5, {"alpha":0}, speed*0.5);
+            snow_timeline.add( sf_timeline, start_time);
+
+            i--;
+        }
+
+    }
+
+    //explosion in radial directions
+    function createExplosion(){
+        var i=30;
+
+        while(i>0){
+            var px = $("#container").width()*0.5,
+                py = $("#container").height()*0.5,
+                speed = randRange( 4, 5),
+                start_time = randRange( 0, 1),
+                img_scale = randRange(10, 12),
+                angle= randRange(0, 2*Math.PI),
+                ex_rad = randRange( 100, 200);
+
+            var ex_img = $("<img src='images/piece.png' id='ex'"+i+"'/>");
+            ex_img.css({ "position":"absolute", "left": px, "top": py, "width": img_scale, "height":"auto", "opacity": 0});
+            $("#container").append(ex_img);
+
+            var ex_timeline = new TimelineLite();
+            ex_timeline.to(ex_img, speed*0.01, {"alpha":1})
+                        .to(ex_img, speed, {"left": px+ex_rad*Math.cos(angle), 
+                                            "top": py+ex_rad*Math.sin(angle), 
+                                            ease:Quint.easeOut}, 0)
+                        .to(ex_img, speed*0.5, {"alpha":0}, speed*0.5);
+            explosion_timeline.add( ex_timeline, start_time);
+
+            i--;
+        }
+
+    }
+
+
+</script>
+
+
+</body>
+</html>

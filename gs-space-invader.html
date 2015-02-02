@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Greensock Space Invader</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <style>
+        body{
+            background-color: #eee;
+            margin: 0;
+            font-family: monospace;
+        }
+
+        .container{
+            position: relative;
+            width: 1000px;
+            margin: 0 auto;
+        }
+        
+        #container{
+            background-color: black;
+            height: 600px;
+        }
+
+        #container p{
+            font-size: 1.25em;
+            color: #fff;
+            text-align: center;
+        }
+
+        #container #score{
+            color: #0f0;
+        }
+
+        #player-control{
+            background-color: #333;
+            color: white;
+            height: 60px;
+        }
+
+        #troop{
+            position: absolute;
+            top: 30px;
+            left: 0px;
+            width: 200px;
+            height: 125px;
+            color: white;
+        }
+
+
+        #my-ship{
+            position: absolute;
+            bottom: 10px;
+            left: 480px;
+        }
+
+        .shot1{
+            position: absolute;
+        }
+        
+        #play-pause{
+            position: relative;
+            top: 20px;
+            left: 460px;
+            width: 80px;
+        }
+
+        #credit{
+            color: #333;
+            font-size: 0.9em;
+            text-align: center;
+        }
+
+    </style>
+    <script src="js/jquery-1.11.2.min.js"></script>    
+</head>
+
+<body>
+<div id="container"  class="container">
+    <p>score:<span id="score">0</span></p>
+    <div id="troop">
+    </div>  
+    <img id="my-ship" src="images/my-ship1.png"/>
+   
+</div>
+
+<div id="player-control"  class="container">
+    <button type="button" id="play-pause">PLAY</button>
+</div>
+
+<div class="container" id="credit">
+<p>sound source: <a href="http://www.classicgaming.cc/classics/spaceinvaders/sounds.php">http://www.classicgaming.cc/</a></p>
+</div>
+
+<script src="js/greensock/TweenMax.min.js"></script> 
+<script src="js/greensock/jquery.gsap.min.js"></script>  
+<script>
+    var inv_timeline = new TimelineMax({paused:true}); //, onComplete:onCompleteInvader});
+    var num_row = 4;
+    var num_col = 8;
+    var step_x = 20;
+    var step_y = 40;
+    var interval= 0.125;
+    var shoot_audio = document.createElement('audio');
+    var exp_audio = document.createElement('audio');
+    var total_inv = num_row*num_col;
+    var score = 0, game_over = false;
+
+    shoot_audio.setAttribute('src', 'audio/shoot.wav');
+    exp_audio.setAttribute('src', 'audio/invaderkilled.wav');
+
+
+    initializeTroop();
+    generateTimeline();
+
+    function initializeTroop()
+    {
+        for( var i=0; i<num_row; i++){ //5 rows
+            for( var j=0; j<num_col; j++){ //8 columns
+               $("#troop").append("<img src='images/sp"+(i%2+1)+"-sm.gif' id='inv"+(i+1)+(j+1)+"'/>");
+            }
+        }
+    }
+
+    function generateTimeline()
+    {
+        var path = [];
+        var curr_x=0, curr_y=0;
+        var count =0, curr_d=1, next_d = 1, curr_x=0, curr_y=0; //_d has 1:horizontal increment, -1: horizontal decr, 2: vertical down
+        var index=0;
+        var width = $("#container").width() - $("#troop").width()-40;
+        var height = $("#container").height() - $("#troop").height()-40;
+
+        //generate troop path in the "controlled" random direction
+        path[0] = 1;
+        index++;
+
+        while( curr_y < height)
+        {
+            //move in a horizontal direction at least once, at 20th move, 50% chance of moving vertical down
+            if ( curr_d==-1 || curr_d==1) {
+                if ( count > 20)
+                    next_d = ((Math.floor(Math.random()*10)<5))?curr_d:2; //keep going or vertical
+                else next_d = curr_d; 
+            }
+            else{
+                next_d = ((Math.floor(Math.random()*10)<5))?-1:1;
+            }
+            
+            //depending on width or height, limit the motion
+            if ( next_d ==-1 || next_d==1) {
+                if( curr_x + (next_d*step_x) <0 || curr_x +(next_d*step_x) >width ){
+                    next_d *= -1;
+                    count = 0;
+                }
+                else{
+                    count ++;
+                }
+                curr_x += (next_d*step_x);
+
+            }
+            else{
+                curr_y += step_y;
+                count = 0;
+            }
+            path[index] = next_d;
+            curr_d = next_d;
+            index ++;
+        }
+
+        //populate the timeline per generated path above
+        count = 0;
+        curr_x =0;
+        curr_y =0;
+        var i=0;
+
+        for( i=0; i<index-1; i++)
+        {
+           
+            if( path[i] == path[i+1] ) count ++;
+            else{
+                if( path[i]== 2){
+                    curr_y += (count+1)*step_y;
+                    inv_timeline.to($("#troop"), interval*(count+1), {top:curr_y, ease:Cubic.easeOut});
+                }
+                else {
+                    curr_x += step_x*path[i]*(count+1);
+                    inv_timeline.to( $("#troop"), interval*(count+1), {left:curr_x, ease:Cubic.easeOut});
+                }
+                count = 0;
+            }
+        }
+
+        if( count >0){
+            if( path[i]== 2){
+                curr_y += (count+1)*step_y;
+                inv_timeline.to($("#troop"), interval*(count+1), {top:curr_y, ease:Cubic.easeOut});
+            }
+            else {
+                curr_x += step_x*path[i]*(count+1);
+                inv_timeline.to( $("#troop"), interval*(count+1), {left:curr_x, ease:Cubic.easeOut});
+            }
+        }
+
+        inv_timeline.add(onCompleteInvader);
+        
+        //add troop background music
+        var audio_timeline = new TimelineMax({repeat:-1});
+        for( var i=0; i<4; i++){
+            var audioplay = document.createElement('audio');
+            var audio_src = 'audio/fastinvader'+(i+1)+'.wav';
+            audioplay.setAttribute('src', audio_src);
+            audio_timeline.to($("#troop"),0.6, {onStart:function(){audioplay.play()}, onComplete:function(){audioplay.pause()}});
+        }
+
+        inv_timeline.add( audio_timeline, 0);
+    }
+
+    function overlap( x, y, left, top, width, height)
+    {
+        if( x>left && x<left+width){
+            if( y>top && y<top+height){
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    function checkCollide(shot)
+    {
+        if( total_inv <= 0 ){
+            if( inv_timeline.paused()==false)
+                inv_timeline.pause();
+        }
+        else{
+            var sx = shot.position().left;
+            var sy = shot.position().top;
+            var troop_left =  $("#troop").position().left;
+            var troop_top =  $("#troop").position().top;
+            var troop_w =  $("#troop").width();
+            var troop_h =  $("#troop").height();
+
+            if(overlap(sx, sy, troop_left, troop_top, troop_w, troop_h)){
+                sx -= troop_left;
+                var col = Math.ceil( sx/25 ), row=num_row;
+                while(row>0){
+                    if( $("#inv"+row+col).attr("src") != "images/black.png" 
+                        && $("#inv"+row+col).attr("src") != "images/explosion.gif" ){
+                        var inv= $("#inv"+row+col);
+                        inv.attr("src", "images/explosion.gif");
+
+                        TweenLite.to( inv, 1.25, {onComplete:onCompleteExplosion, onCompleteParams:[inv]});
+                        TweenLite.killTweensOf(shot);
+                        shot.hide();
+
+                        exp_audio.pause();
+                        exp_audio.play();
+
+                        total_inv--;
+
+                        score += (num_row-row+1)*127;
+                        $("#score").text(score);
+                        game_over = (total_inv==0);
+
+                        break;
+                    }
+                    row--;
+                }
+                
+            }
+         }
+
+         if(game_over==true){
+            $("#play-pause").text("RESTART");
+         }
+    }
+
+    function onCompleteExplosion(inv){
+        inv.attr("src", "images/black.png");
+        TweenLite.killTweensOf(inv);
+    }
+
+    function onCompleteInvader(){
+        game_over = true;
+        inv_timeline.pause();
+        $("#play-pause").text("RESTART");
+    }
+    
+    var shot_number = 1;
+    $('body').keydown(function(e){
+         if (e.keyCode == '38' || e.keyCode == '32') {
+            // up arrow
+            var shot = $("<img src='images/shoot1.png' id='shot'"+shot_number+"'/>");
+            shot_number++;
+           //shot.className = "shot1";
+            shot.css({"position": "absolute",
+                    "top": $("#my-ship").position().top,
+                    "left": $("#my-ship").position().left+12});
+            $("#container").append(shot);
+            TweenLite.to( shot, 2, {top:-40, left:shot.position().left, ease:Quad.easeOut, onUpdate:checkCollide, onUpdateParams:[shot]});
+            shoot_audio.pause();
+            shoot_audio.play();
+
+        }
+        else if (e.keyCode == '40') {
+            // down arrow
+        }
+        else if (e.keyCode == '37') {
+           // left arrow
+            TweenLite.to($("#my-ship"), 0.25, {left:"-=40px"});
+       }
+       else if (e.keyCode == '39') {
+           // right arrow
+            TweenLite.to($("#my-ship"), 0.25, {left:"+=40px"});
+       }
+
+    });
+
+     $("#play-pause").on("click", function(event){
+            if(game_over == true){
+                window.location.reload();
+                $("#restart").blur();
+            }
+            if( inv_timeline.paused() == true){
+                inv_timeline.play();
+                $("#play-pause").text("PAUSE");
+            }
+            else{
+                inv_timeline.pause();
+                $("#play-pause").text("PLAY");
+            }
+
+            $("#play-pause").blur();
+        });
+
+</script>
+
+
+</body>
+</html>
